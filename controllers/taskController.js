@@ -1,5 +1,6 @@
 // Required Imports
 const Task = require("../models/taskModel");
+const { formatList } = require("../utils/utils");
 
 // Adding a new task
 module.exports.addTask = async ({ command, ack, say }) => {
@@ -7,7 +8,7 @@ module.exports.addTask = async ({ command, ack, say }) => {
 
   const { text } = command;
   const userId = command.user_id;
-  const status = "not started"; // Set the default status to "not started"
+  const status = "not started";
 
   if (!text) {
     say("Please provide the task description after the `/add` command.");
@@ -69,11 +70,48 @@ module.exports.listTasks = async ({ command, ack, say }) => {
       return;
     }
 
-    const formattedTasks = tasks.map((task, index) => {
-      return `${index + 1}. ${task.text}`;
-    });
+    taskStatuses = [];
 
-    say(`Here are your tasks:\n${formattedTasks.join("\n")}`);
+    const formattedTasks = tasks.map((task, index) => {
+      let statusText = "";
+      let statusEmoji = "";
+
+      switch (task.status) {
+        case "not started":
+          statusText = "Not Started";
+          statusEmoji = ":grey_question:";
+          break;
+        case "started":
+          statusText = "Started";
+          statusEmoji = ":arrow_right:";
+          break;
+        case "completed":
+          statusText = "Completed";
+          statusEmoji = ":white_check_mark:";
+          break;
+        case "stopped":
+          statusText = "Stopped";
+          statusEmoji = ":no_entry:";
+          break;
+        default:
+          statusText = "Unknown";
+          statusEmoji = ":question:";
+      }
+
+      const taskText =
+        task.status === "completed" ? `~${task.text}~` : task.text;
+      return `${index + 1}. *${taskText}* (${statusText}) ${statusEmoji}`;
+    });
+    await say({
+      text: "Here are your tasks:",
+      blocks: formattedTasks.map((task) => ({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: task,
+        },
+      })),
+    });
     await ack("Tasks listed!");
   } catch (error) {
     console.error("Error listing tasks:", error);
